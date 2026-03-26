@@ -43,6 +43,7 @@ class SaveAsXlsx:
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
                  extra_columns: bool = True,
+                 total_row: bool = False,
                  auto_save: bool = False,
                  ) -> None:
         self.closed = False
@@ -71,6 +72,7 @@ class SaveAsXlsx:
         result = worksheet.add_table(0, 0, len(data), len(columns) - 1, {
             "header_row": True,
             "columns": self.columns_values,
+            "total_row": total_row,
             **({"name": table_name} if table_name else {}),
             "data": [
                 [self.convert_value(row_dict.get(col_name)) for col_name in col_names]
