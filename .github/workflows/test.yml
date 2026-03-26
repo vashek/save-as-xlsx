@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
 
+# Required permissions when using comment_mode: failures
+permissions:
+  checks: write          # Always needed for check runs / test summary
+  pull-requests: write   # Required for posting comments on PRs
+  contents: read         # Needed for checkout
+
 jobs:
   test:
     runs-on: ubuntu-latest
