@@ -1,0 +1,42 @@
+name: Test with Hatch
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        pydantic: ["none", "v1", "v2", "latest"]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Hatch
+        uses: pypa/hatch@install
+
+      - name: Run tests (Python ${{ matrix.python-version }} + Pydantic ${{ matrix.pydantic }})
+        run: |
+          hatch test \
+            -i python=${{ matrix.python-version }} \
+            -i pydantic=${{ matrix.pydantic }} \
+            -- --junitxml=junit/test-results-${{ matrix.python-version }}-${{ matrix.pydantic }}.xml
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: junit/*.xml
+          comment_mode: failures
