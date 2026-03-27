@@ -18,6 +18,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         pydantic: ["none", "v1", "v2", "latest"]
+        openpyxl: ["none", "latest"]
       fail-fast: false
 
     steps:
@@ -33,11 +34,12 @@ jobs:
       - name: Install Hatch
         uses: pypa/hatch@install
 
-      - name: Run tests (Python ${{ matrix.python-version }} + Pydantic ${{ matrix.pydantic }})
+      - name: Run tests (Python ${{ matrix.python-version }} + Pydantic ${{ matrix.pydantic }}) + openpyxl ${{ matrix.openpyxl }})
         run: |
           hatch test \
             -i python=${{ matrix.python-version }} \
             -i pydantic=${{ matrix.pydantic }} \
+            -i openpyxl=${{ matrix.openpyxl }} \
             -- --junitxml=junit/test-results-${{ matrix.python-version }}-${{ matrix.pydantic }}.xml
 
       - name: Publish test results

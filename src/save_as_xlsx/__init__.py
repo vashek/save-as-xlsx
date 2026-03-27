@@ -22,6 +22,8 @@ except ImportError:
     class BaseModel: pass
     PYDANTIC_VER = -1
 
+from .__about__ import __version__
+
 
 class TableAddError(XlsxWriterException):
     pass
@@ -100,8 +102,12 @@ class SaveAsXlsx:
             self.close()
 
     @classmethod
-    def convert_value(cls, input_value):
-        if isinstance(input_value, (str, int, float, bool, Decimal, Fraction, datetime, date, time, timedelta)):
+    def convert_value(cls, input_value, for_json = False):
+        if isinstance(input_value, Enum):
+            return input_value.name
+        elif isinstance(input_value, (str, int, float, bool, Decimal, Fraction, datetime, date, time, timedelta)):
+            if for_json and not isinstance(input_value, (str, int, float, bool)):
+                return float(input_value)
             return input_value
         elif input_value is None:
             return None
@@ -110,8 +116,6 @@ class SaveAsXlsx:
         elif isinstance(input_value, set):
             return "{" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "}"
         elif isinstance(input_value, dict):
-            return json.dumps(input_value, default=cls.convert_value)
-        elif isinstance(input_value, Enum):
-            return input_value.name
+            return json.dumps(input_value, default=lambda value: cls.convert_value(value, for_json=True))
         else:
             raise UnsupportedTypeError(input_value)

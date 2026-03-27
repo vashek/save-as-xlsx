@@ -36,6 +36,11 @@ Source = "https://github.com/vashek/save-as-xlsx"
 [tool.hatch.version]
 path = "src/save_as_xlsx/__about__.py"
 
+[tool.hatch.envs.default]
+extra-dependencies = [
+  "openpyxl",
+]
+
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
@@ -65,6 +70,7 @@ exclude_lines = [
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 pydantic = ["none", "v2", "v1", "latest"]
+openpyxl = ["none", "latest"]
 
 [tool.hatch.envs.hatch-test]
 extra-args = ["-rfEP"]
@@ -74,5 +80,9 @@ matrix.pydantic.dependencies = [
     { value = "pydantic~=2.0", if = ["v2"] },
     { value = "pydantic>=2.0", if = ["latest"] },
     { value = "pydantic<2", if = ["v1"] },
+    # nothing for "none"
+]
+matrix.openpyxl.dependencies = [
+    { value = "openpyxl", if = ["latest"] },
     # nothing for "none"
 ]
