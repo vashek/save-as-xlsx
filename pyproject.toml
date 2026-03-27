@@ -50,7 +50,7 @@ extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/save_as_xlsx tests}"
+check = "mypy --install-types --non-interactive --no-error-summary --show-column-numbers --show-error-codes {args:src/save_as_xlsx tests}"
 
 [tool.coverage.run]
 source_pkgs = ["save_as_xlsx", "tests"]
