@@ -1,0 +1,30 @@
+name: Type check with Hatch
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  types:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Hatch
+        uses: pypa/hatch@install
+
+      - name: Run type checking
+        run: |
+          hatch run types:check -- --no-error-summary
+        continue-on-error: true   # so the workflow doesn't fail before annotations are created
