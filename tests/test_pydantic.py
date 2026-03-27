@@ -22,7 +22,7 @@ except ImportError:
 
 
 def test_print_pydantic_version():
-    print("pydantic version: " + getattr(pydantic, "__version__", "(none)") + "\n")
+    print("pydantic version: " + getattr(pydantic, "__version__", "(none)") + "\n")  # noqa: T201
 
 
 @pytest.mark.skipif(pydantic is None, reason="requires pydantic")

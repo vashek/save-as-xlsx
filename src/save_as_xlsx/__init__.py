@@ -16,7 +16,7 @@ from uuid import UUID
 
 import xlsxwriter  # type: ignore
 import xlsxwriter.worksheet  # type: ignore
-from annotated_types import Gt, Unit, Lt
+from annotated_types import Gt, Lt, Unit
 from xlsxwriter.exceptions import XlsxWriterException  # type: ignore
 
 try:
@@ -24,20 +24,20 @@ try:
     from pydantic import BaseModel
     PYDANTIC_VER = int(pydantic.__version__.split(".")[0])
 except ImportError:
-    class BaseModel: pass  # type: ignore
+    class BaseModel:  # type: ignore
+        pass
     PYDANTIC_VER = -1
 
 from .__about__ import __version__
 
-
 __all__ = [
-    "__version__",
-    "SaveAsXlsx",
-    "save_as_xlsx",
     "ColumnWidth",
+    "SaveAsXlsx",
     "TableAddError",
-    "WorkbookClosedError",
     "UnsupportedTypeError",
+    "WorkbookClosedError",
+    "__version__",
+    "save_as_xlsx",
 ]
 
 
@@ -101,7 +101,7 @@ class SaveAsXlsx:
                   total_row: bool = False,
                   ) -> xlsxwriter.worksheet.Worksheet:
         if self.closed:
-            raise WorkbookClosedError()
+            raise WorkbookClosedError
         self.worksheet = worksheet = self.workbook.add_worksheet(sheet_name)
         columns: dict[str, dict[str, str | int | float]] = {}
         self.columns = columns
