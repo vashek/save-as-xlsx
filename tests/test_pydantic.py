@@ -39,7 +39,7 @@ class TestPydantic:
     def test_save_pydantic(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             fn = Path(tmpdir) / "test.xlsx"
-            with save_as_xlsx.SaveAsXlsx(self.TEST_DATA_WITH_PYDANTIC, fn) as saver:
+            with save_as_xlsx.SaveAsXlsx(fn, self.TEST_DATA_WITH_PYDANTIC) as saver:
                 assert len(saver.columns_values) == 2
                 assert saver.columns_values[0]["header"] == "a"
                 assert saver.columns_values[1]["header"] == "b"

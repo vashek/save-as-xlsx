@@ -51,7 +51,7 @@ TEST_DATA_WITH_DATACLASS = [
 def test_save_on_explicit_close():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        saver = save_as_xlsx.SaveAsXlsx(TEST_DATA, fn)
+        saver = save_as_xlsx.SaveAsXlsx(fn, TEST_DATA)
         assert not fn.exists()
         saver.close()
         assert fn.exists()
@@ -61,7 +61,7 @@ def test_save_with_str_filename():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = os.path.join(tmpdir, "test.xlsx")
         assert isinstance(fn, str)
-        saver = save_as_xlsx.SaveAsXlsx(TEST_DATA, fn)
+        saver = save_as_xlsx.SaveAsXlsx(fn, TEST_DATA)
         assert not Path(fn).exists()
         saver.close()
         assert Path(fn).exists()
@@ -70,14 +70,14 @@ def test_save_with_str_filename():
 def test_save_on_auto_close():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        save_as_xlsx.SaveAsXlsx(TEST_DATA, fn, auto_save=True)
+        save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, auto_save=True)
         assert fn.exists()
         verify_using_pyopenxl(fn, "A1:C3")
 
 def test_save_on_with():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn):
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA):
             assert not fn.exists()
         assert fn.exists()
         verify_using_pyopenxl(fn, "A1:C3")
@@ -85,14 +85,14 @@ def test_save_on_with():
 def test_num_rows():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA) as saver:
             assert saver.number_of_value_rows == 2
         verify_using_pyopenxl(fn, "A1:C3")
 
 def test_default_column_order():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA) as saver:
             assert len(saver.columns_values) == 3
             assert saver.columns_values[0]["header"] == "a"
             assert saver.columns_values[1]["header"] == "b"
@@ -106,7 +106,7 @@ def test_default_column_order():
 def test_column_order():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn, column_order=("b",)) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, column_order=("b",)) as saver:
             assert len(saver.columns_values) == 3
             assert saver.columns_values[0]["header"] == "b"
             assert saver.columns_values[1]["header"] == "a"
@@ -120,7 +120,7 @@ def test_column_order():
 def test_column_order_extra_nonexistent_column():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn, column_order=("b", "nonexistent")) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, column_order=("b", "nonexistent")) as saver:
             assert len(saver.columns_values) == 4
             assert saver.columns_values[0]["header"] == "b"
             assert saver.columns_values[1]["header"] == "nonexistent"
@@ -135,7 +135,7 @@ def test_column_order_extra_nonexistent_column():
 def test_column_order_no_extras():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn, column_order=("b", "c"), extra_columns=False) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, column_order=("b", "c"), extra_columns=False) as saver:
             assert len(saver.columns_values) == 2
             assert saver.columns_values[0]["header"] == "b"
             assert saver.columns_values[1]["header"] == "c"
@@ -148,7 +148,7 @@ def test_column_order_no_extras():
 def test_column_order_extra_nonexistent_column_no_extras():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA, fn, column_order=("b", "nonexistent"), extra_columns=False) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, column_order=("b", "nonexistent"), extra_columns=False) as saver:
             assert len(saver.columns_values) == 2
             assert saver.columns_values[0]["header"] == "b"
             assert saver.columns_values[1]["header"] == "nonexistent"
@@ -161,7 +161,7 @@ def test_column_order_extra_nonexistent_column_no_extras():
 def test_generator():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(({"num": i} for i in range(5)), fn) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, ({"num": i} for i in range(5))) as saver:
             assert len(saver.columns_values) == 1
             assert saver.columns_values[0]["header"] == "num"
             assert saver.number_of_value_rows == 5
@@ -177,7 +177,7 @@ def test_generator():
 def test_enum():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA_WITH_ENUM, fn) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA_WITH_ENUM) as saver:
             assert len(saver.columns_values) == 2
             assert saver.columns_values[0]["header"] == "a"
             assert saver.columns_values[1]["header"] == "enum"
@@ -189,7 +189,7 @@ def test_enum():
 def test_complex():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA_COMPLEX, fn) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA_COMPLEX) as saver:
             assert len(saver.columns_values) == 7
             assert saver.number_of_value_rows == len(TEST_DATA_COMPLEX)
         verify_using_pyopenxl(fn, "A1:G6", data=[
@@ -205,7 +205,7 @@ def test_complex():
 def test_dataclasses():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(TEST_DATA_WITH_DATACLASS, fn) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA_WITH_DATACLASS) as saver:
             assert len(saver.columns_values) == 2
             assert saver.columns_values[0]["header"] == "a"
             assert saver.columns_values[1]["header"] == "b"
@@ -214,4 +214,35 @@ def test_dataclasses():
             ("a", "b"),
             (1, None),
             (2, "B"),
+        ])
+
+def test_another_sheet():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, sheet_name="FirstSheet", table_name="FirstTable") as saver:
+            saver.add_sheet(TEST_DATA_WITH_ENUM, sheet_name="AnotherSheet", table_name="AnotherTable")
+        verify_using_pyopenxl(fn, sheet_name="FirstSheet", table_name="FirstTable", dimensions="A1:C3", data=[
+            ("a", "b", "c"),
+            (1, "2", None),
+            (None, "B", None),
+        ])
+        verify_using_pyopenxl(fn, sheet_name="AnotherSheet", table_name="AnotherTable", dimensions="A1:B2", data=[
+            ("a", "enum"),
+            (1, "ONE"),
+        ])
+
+def test_empty_then_two_sheets():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn) as saver:
+            saver.add_sheet(TEST_DATA, sheet_name="FirstSheet", table_name="FirstTable")
+            saver.add_sheet(TEST_DATA_WITH_ENUM, sheet_name="AnotherSheet", table_name="AnotherTable")
+        verify_using_pyopenxl(fn, sheet_name="FirstSheet", table_name="FirstTable", dimensions="A1:C3", data=[
+            ("a", "b", "c"),
+            (1, "2", None),
+            (None, "B", None),
+        ])
+        verify_using_pyopenxl(fn, sheet_name="AnotherSheet", table_name="AnotherTable", dimensions="A1:B2", data=[
+            ("a", "enum"),
+            (1, "ONE"),
         ])

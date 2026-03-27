@@ -39,6 +39,9 @@ path = "src/save_as_xlsx/__about__.py"
 [tool.hatch.envs.default]
 extra-dependencies = [
   "openpyxl",
+  "pydantic",
+  "pytest",
+  "coverage",
 ]
 
 [tool.hatch.envs.types]

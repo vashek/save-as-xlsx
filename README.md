@@ -43,30 +43,38 @@ DATA = [
     {"a": 1, "b": "qwe"},
     {"b": "asd", "c": True},
 ]
+OTHER_DATA = [
+    {"Name": "John", "Age": 46},
+    {"Name": "Jane", "Age": 42},
+]
 
 # simplest case
-SaveAsXlsx(DATA, "file.xlsx", auto_save=True)
+SaveAsXlsx("file.xlsx", DATA, auto_save=True)
 
-# or if you want to customize the XLSX file before saving:
-with SaveAsXlsx(DATA, "file.xlsx") as saver:
+# or if you want to customize the XLSX file before saving, e.g. add another sheet:
+with SaveAsXlsx("file.xlsx", DATA) as saver:
     # do something with saver.workbook or saver.worksheet (see xlsxwriter)
-    pass
+    saver.add_sheet(OTHER_DATA)
 
 # the data can be any iterable - tuple, generator...
-SaveAsXlsx(({"num": i} for i in range(5)), "file.xlsx", auto_save=True)
+SaveAsXlsx("file.xlsx", ({"num": i} for i in range(5)), auto_save=True)
 
 # file name can be a Path
 from pathlib import Path
-SaveAsXlsx(DATA, Path("file.xlsx"), auto_save=True)
+SaveAsXlsx(Path("file.xlsx"), DATA, auto_save=True)
 # saved columns: a, b, c
 
 # you can specify the order of columns - these will be first, remaining ones after them
-SaveAsXlsx(DATA, "file.xlsx", column_order=("b", "c"))
+SaveAsXlsx("file.xlsx", DATA, column_order=("b", "c"))
 # saved columns: b, c, a
 
 # or maybe you just want some of the columns, and an empty one
-SaveAsXlsx(DATA, "file.xlsx", column_order=("b", "empty"), extra_columns=False)
+SaveAsXlsx("file.xlsx", DATA, column_order=("b", "empty"), extra_columns=False)
 # saved columns: b, empty
+
+# you can also specify the sheet and/or table name
+with SaveAsXlsx("file.xlsx", DATA, sheet_name="FirstSheet", table_name="FirstTable") as saver:
+    saver.add_sheet(OTHER_DATA, sheet_name="AnotherSheet", table_name="AnotherTable")
 ```
 
 ## License

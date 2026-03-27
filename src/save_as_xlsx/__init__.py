@@ -11,9 +11,10 @@ from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
 from os import PathLike, fspath
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar, Protocol, TypeVar
 
 import xlsxwriter
+import xlsxwriter.worksheet
 from xlsxwriter.exceptions import XlsxWriterException
 
 try:
@@ -31,6 +32,10 @@ class TableAddError(XlsxWriterException):
     pass
 
 
+class WorkbookClosedError(XlsxWriterException):
+    pass
+
+
 class UnsupportedTypeError(XlsxWriterException, TypeError):
     pass
 
@@ -40,9 +45,11 @@ class DataclassInstance(Protocol):
 
 
 class SaveAsXlsx:
+    PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
+
     def __init__(self,
-                 data: Iterable[dict | DataclassInstance | BaseModel],
                  filename: str | PathLike,
+                 data: Iterable[dict | DataclassInstance | PydanticModel] | None = None,
                  sheet_name: str | None = None,
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
@@ -53,8 +60,28 @@ class SaveAsXlsx:
                  ) -> None:
         self.closed = False
         self.filename = filename
-        self.workbook = workbook = xlsxwriter.Workbook(fspath(filename))
-        self.worksheet = worksheet = workbook.add_worksheet(sheet_name)
+        self.workbook = xlsxwriter.Workbook(fspath(filename))
+        self.worksheet: xlsxwriter.worksheet.Worksheet | None = None
+        self.columns: dict[str, dict[str, str | int | float]] = {}
+        self.columns_values: list[dict[str, str | int | float]] = []
+        self.number_of_value_rows = 0
+        if data is not None:
+            self.add_sheet(data, sheet_name=sheet_name, table_name=table_name, column_order=column_order, extra_columns=extra_columns, total_row=total_row)
+        if auto_save:
+            self.close()
+
+    def add_sheet(self,
+                  data: Iterable[dict | DataclassInstance | BaseModel],
+                  sheet_name: str | None = None,
+                  table_name: str | None = None,
+                  column_order: Iterable[str] | None = None,
+                  *,
+                  extra_columns: bool = True,
+                  total_row: bool = False,
+                  ) -> xlsxwriter.worksheet.Worksheet:
+        if self.closed:
+            raise WorkbookClosedError()
+        self.worksheet = worksheet = self.workbook.add_worksheet(sheet_name)
         self.columns = columns = {}
         for column in column_order or ():
             columns[column] = {"header": column}
@@ -90,11 +117,11 @@ class SaveAsXlsx:
         })
         if result != 0:
             raise TableAddError(f"Table add error: {result}")
-        if auto_save:
-            self.close()
+        return worksheet
 
     def close(self) -> None:
-        self.workbook.close()
+        if not self.closed:
+            self.workbook.close()
         self.closed = True
 
     def __enter__(self) -> SaveAsXlsx:
@@ -106,7 +133,7 @@ class SaveAsXlsx:
 
     @classmethod
     def convert_value(cls, input_value, *, for_json: bool = False):
-        if isinstance(input_value, Enum):
+        if isinstance(input_value, Enum):  # must be first, because enum may match str or int
             return input_value.name
         if isinstance(input_value, (str, int, float, bool, Decimal, Fraction, datetime, date, time, timedelta)):
             if for_json and not isinstance(input_value, (str, int, float, bool)):
