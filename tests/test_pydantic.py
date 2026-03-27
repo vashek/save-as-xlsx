@@ -5,18 +5,18 @@ import tempfile
 from pathlib import Path
 from typing import ClassVar
 
-import pytest
+import pytest  # type: ignore
 
 import save_as_xlsx
 
 from .test_pyopenxl_verifier import verify_using_pyopenxl
 
 try:
-    import pydantic
-    BaseModel = pydantic.BaseModel
+    import pydantic  # type: ignore
+    BaseModel: type = pydantic.BaseModel
 except ImportError:
     pydantic = None
-    class BaseModel:
+    class BaseModel:  # type: ignore
         def __init__(self, *args, **kwargs):
             pass
 
@@ -29,7 +29,7 @@ def test_print_pydantic_version():
 class TestPydantic:
     class ModelForTest(BaseModel):
         a: int
-        b: str = None
+        b: str | None = None
 
     TEST_DATA_WITH_PYDANTIC: ClassVar[list[ModelForTest]] = [
         ModelForTest(a=1),

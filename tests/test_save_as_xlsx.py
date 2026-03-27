@@ -8,6 +8,7 @@ from decimal import Decimal
 from enum import IntEnum
 from fractions import Fraction
 from pathlib import Path
+from uuid import UUID
 
 import save_as_xlsx
 
@@ -22,7 +23,7 @@ class EnumForTest(IntEnum):
 @dataclass
 class DataclassForTest:
     a: int
-    b: str = None
+    b: str | None = None
 
 
 TEST_DATA = [
@@ -42,11 +43,23 @@ TEST_DATA_WITH_ENUM = [
     {"a": 1, "enum": EnumForTest.ONE},
 ]
 
+TEST_DATA_WITH_UUID = [
+    {"a": 1, "uuid": UUID("5f456a18-29f0-11f1-a203-e41fd5b9abcb")},
+]
+
 TEST_DATA_WITH_DATACLASS = [
     DataclassForTest(a=1),
     DataclassForTest(a=2, b="B"),
 ]
 
+
+def test_save_with_function():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        assert not fn.exists()
+        save_as_xlsx.save_as_xlsx(fn, TEST_DATA)
+        assert fn.exists()
+        verify_using_pyopenxl(fn, "A1:C3")
 
 def test_save_on_explicit_close():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -82,12 +95,20 @@ def test_save_on_with():
         assert fn.exists()
         verify_using_pyopenxl(fn, "A1:C3")
 
-def test_num_rows():
+def test_num_rows_and_sheet_name():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
         with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA) as saver:
             assert saver.number_of_value_rows == 2
+            assert saver.worksheet.name == "Sheet1"
         verify_using_pyopenxl(fn, "A1:C3")
+
+def test_custom_sheet_name():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, sheet_name="My Sheet") as saver:
+            assert saver.worksheet.name == "My Sheet"
+        verify_using_pyopenxl(fn, "A1:C3", sheet_name="My Sheet")
 
 def test_default_column_order():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -184,6 +205,18 @@ def test_enum():
         verify_using_pyopenxl(fn, "A1:B2", data=[
             ("a", "enum"),
             (1, "ONE"),
+        ])
+
+def test_uuid():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA_WITH_UUID) as saver:
+            assert len(saver.columns_values) == 2
+            assert saver.columns_values[0]["header"] == "a"
+            assert saver.columns_values[1]["header"] == "uuid"
+        verify_using_pyopenxl(fn, "A1:B2", data=[
+            ("a", "uuid"),
+            (1, "5f456a18-29f0-11f1-a203-e41fd5b9abcb"),
         ])
 
 def test_complex():

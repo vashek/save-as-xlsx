@@ -25,6 +25,8 @@ Just pass any iterable (list, tuple, generator...) of:
 Nesting of complex data types is handled.
 
 Enums are saved as the enum member name.
+UUIDs as their hex representation (e.g. "5f456a18-29f0-11f1-a203-e41fd5b9abcb").
+Decimal and Fraction as their float representation.
 
 Uses the xlsxwrite package to do the actual writing.
 
@@ -37,7 +39,7 @@ pip install save-as-xlsx
 ## Usage
 
 ```python3
-from save_as_xlsx import SaveAsXlsx
+from save_as_xlsx import SaveAsXlsx, save_as_xlsx
 
 DATA = [
     {"a": 1, "b": "qwe"},
@@ -49,7 +51,7 @@ OTHER_DATA = [
 ]
 
 # simplest case
-SaveAsXlsx("file.xlsx", DATA, auto_save=True)
+save_as_xlsx("file.xlsx", DATA)
 
 # or if you want to customize the XLSX file before saving, e.g. add another sheet:
 with SaveAsXlsx("file.xlsx", DATA) as saver:
@@ -74,6 +76,11 @@ SaveAsXlsx("file.xlsx", DATA, column_order=("b", "empty"), extra_columns=False)
 
 # you can also specify the sheet and/or table name
 with SaveAsXlsx("file.xlsx", DATA, sheet_name="FirstSheet", table_name="FirstTable") as saver:
+    saver.add_sheet(OTHER_DATA, sheet_name="AnotherSheet", table_name="AnotherTable")
+
+# or you can do the same like this
+with SaveAsXlsx("file.xlsx") as saver:
+    saver.add_sheet(DATA, sheet_name="FirstSheet", table_name="FirstTable")
     saver.add_sheet(OTHER_DATA, sheet_name="AnotherSheet", table_name="AnotherTable")
 ```
 

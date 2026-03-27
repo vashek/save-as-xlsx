@@ -4,28 +4,41 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Set, Sized
 from dataclasses import asdict, fields, is_dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, IntEnum
 from fractions import Fraction
 from os import PathLike, fspath
-from typing import Any, ClassVar, Protocol, TypeVar
+from typing import Annotated, Any, ClassVar, Protocol, TypeAlias
+from uuid import UUID
 
-import xlsxwriter
-import xlsxwriter.worksheet
-from xlsxwriter.exceptions import XlsxWriterException
+import xlsxwriter  # type: ignore
+import xlsxwriter.worksheet  # type: ignore
+from annotated_types import Gt, Unit, Lt
+from xlsxwriter.exceptions import XlsxWriterException  # type: ignore
 
 try:
-    import pydantic
+    import pydantic  # type: ignore
     from pydantic import BaseModel
     PYDANTIC_VER = int(pydantic.__version__.split(".")[0])
 except ImportError:
-    class BaseModel: pass
+    class BaseModel: pass  # type: ignore
     PYDANTIC_VER = -1
 
-from .__about__ import __version__ as __version__
+from .__about__ import __version__
+
+
+__all__ = [
+    "__version__",
+    "SaveAsXlsx",
+    "save_as_xlsx",
+    "ColumnWidth",
+    "TableAddError",
+    "WorkbookClosedError",
+    "UnsupportedTypeError",
+]
 
 
 class TableAddError(XlsxWriterException):
@@ -44,15 +57,22 @@ class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Any]]
 
 
-class SaveAsXlsx:
-    PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
+class ColumnWidth(IntEnum):
+    AUTOFIT = -1
+    HIDE = 0
 
+
+ColumnWidthType: TypeAlias = None | ColumnWidth | Annotated[int|float, Gt(0), Unit("px")] | Annotated[int|float, Lt(0), Unit("characterUnits")]
+
+
+class SaveAsXlsx:
     def __init__(self,
                  filename: str | PathLike,
-                 data: Iterable[dict | DataclassInstance | PydanticModel] | None = None,
+                 data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | None = None,
                  sheet_name: str | None = None,
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
+                 column_width: ColumnWidthType | Mapping[str, ColumnWidthType] | Iterable[ColumnWidthType] = None,
                  *,
                  extra_columns: bool = True,
                  total_row: bool = False,
@@ -63,18 +83,19 @@ class SaveAsXlsx:
         self.workbook = xlsxwriter.Workbook(fspath(filename))
         self.worksheet: xlsxwriter.worksheet.Worksheet | None = None
         self.columns: dict[str, dict[str, str | int | float]] = {}
-        self.columns_values: list[dict[str, str | int | float]] = []
+        self.columns_values: tuple[dict[str, str | int | float], ...] = ()
         self.number_of_value_rows = 0
         if data is not None:
-            self.add_sheet(data, sheet_name=sheet_name, table_name=table_name, column_order=column_order, extra_columns=extra_columns, total_row=total_row)
+            self.add_sheet(data, sheet_name=sheet_name, table_name=table_name, column_order=column_order, column_width=column_width, extra_columns=extra_columns, total_row=total_row)
         if auto_save:
             self.close()
 
     def add_sheet(self,
-                  data: Iterable[dict | DataclassInstance | BaseModel],
+                  data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel],
                   sheet_name: str | None = None,
                   table_name: str | None = None,
                   column_order: Iterable[str] | None = None,
+                  column_width: ColumnWidthType | Mapping[str, ColumnWidthType] | Iterable[ColumnWidthType] = None,
                   *,
                   extra_columns: bool = True,
                   total_row: bool = False,
@@ -82,11 +103,14 @@ class SaveAsXlsx:
         if self.closed:
             raise WorkbookClosedError()
         self.worksheet = worksheet = self.workbook.add_worksheet(sheet_name)
-        self.columns = columns = {}
+        columns: dict[str, dict[str, str | int | float]] = {}
+        self.columns = columns
         for column in column_order or ():
             columns[column] = {"header": column}
-        if not isinstance(data, (list, set, tuple)):
-            data = list(data)
+        if not isinstance(data, Iterable):
+            raise TypeError("data must be an iterable")
+        if not isinstance(data, Sized):
+            data = tuple(data)
         if extra_columns:
             for row in data:
                 # missing_cols = row.keys() - columns.keys()  # not order-preserving, so instead:
@@ -94,12 +118,12 @@ class SaveAsXlsx:
                     (f.name for f in fields(row)) if is_dataclass(row) else
                     type(row).model_fields.keys() if PYDANTIC_VER >= 2 and isinstance(row, BaseModel) else
                     row.__fields__.keys() if isinstance(row, BaseModel) else
-                    row.keys()
+                    row.keys()  # type: ignore
                 ) if col_name not in columns]
                 for column in missing_cols:
                     columns[column] = {"header": column}
         col_names = columns.keys()
-        self.columns_values = list(columns.values())
+        self.columns_values = tuple(columns.values())
         self.number_of_value_rows = len(data)
         result = worksheet.add_table(0, 0, len(data), len(columns) - 1, {
             "header_row": True,
@@ -107,9 +131,9 @@ class SaveAsXlsx:
             "total_row": total_row,
             **({"name": table_name} if table_name else {}),
             "data": [
-                [self.convert_value(row_dict.get(col_name)) for col_name in col_names]
+                [self.convert_value(row_dict.get(col_name)) for col_name in col_names]  # type: ignore
                 for row_union in data
-                if (row_dict := (asdict(row_union) if is_dataclass(row_union) else
+                if (row_dict := (asdict(row_union) if is_dataclass(row_union) else  # type: ignore
                                  row_union.model_dump() if PYDANTIC_VER >= 2 and isinstance(row_union, BaseModel) else
                                  row_union.dict() if isinstance(row_union, BaseModel) else
                                  row_union))
@@ -117,7 +141,67 @@ class SaveAsXlsx:
         })
         if result != 0:
             raise TableAddError(f"Table add error: {result}")
+        self.set_column_widths(worksheet, columns, column_width)
         return worksheet
+
+    @classmethod
+    def set_column_widths(cls,
+                          worksheet: xlsxwriter.worksheet.Worksheet,
+                          columns: dict[str, dict[str, str | int | float]],
+                          column_width: ColumnWidthType | Mapping[str, ColumnWidthType] | Iterable[ColumnWidthType],
+                          ) -> None:
+        if column_width is None:
+            return
+        if column_width == ColumnWidth.AUTOFIT:
+            worksheet.autofit()
+        elif column_width == ColumnWidth.HIDE:
+            worksheet.hide()
+        elif isinstance(column_width, (int, float)):
+            if column_width == 0:
+                raise ValueError("column_width cannot be 0, use None to keep the default width or ColumnWidth.AUTOFIT or ColumnWidth.HIDE")
+            if column_width < 0:
+                worksheet.set_column(0, len(columns) - 1, -column_width)
+            else:
+                worksheet.set_column_pixels(0, len(columns) - 1, column_width)
+        elif isinstance(column_width, Mapping):
+            column_keys = tuple(columns.keys())
+            for column_name_or_number, desired_width in column_width.items():
+                try:
+                    column_number = column_keys.index(column_name_or_number)
+                except ValueError:
+                    if isinstance(column_name_or_number, int) and column_name_or_number >= 0:
+                        column_number = column_name_or_number
+                    else:
+                        raise
+                cls.set_column_width(worksheet, column_number, desired_width)
+        elif isinstance(column_width, Iterable):
+            for column_number, desired_width in enumerate(column_width):
+                cls.set_column_width(worksheet, column_number, desired_width)
+        else:
+            raise TypeError(f"unsupported column_width type: {column_width!r}")
+
+    @staticmethod
+    def set_column_width(worksheet: xlsxwriter.worksheet.Worksheet, column_number: int, column_width: ColumnWidthType,
+                         ) -> None:
+        if column_width is None:
+            return
+        if column_width == ColumnWidth.AUTOFIT:
+            # dangerous, fragile hack...
+            orig_dim_colmin, orig_dim_colmax = worksheet.dim_colmin, worksheet.dim_colmax
+            worksheet.dim_colmin, worksheet.dim_colmax = column_number, column_number
+            worksheet.autofit()
+            worksheet.dim_colmin, worksheet.dim_colmax = orig_dim_colmin, orig_dim_colmax
+        elif column_width == ColumnWidth.HIDE:
+            worksheet.set_column(column_number, column_number, 8.43, None, {'hidden': 1})
+        elif isinstance(column_width, (int, float)):
+            if column_width == 0:
+                raise ValueError("column_width cannot be 0, use None to keep the default width or ColumnWidth.AUTOFIT or ColumnWidth.HIDE")
+            if column_width < 0:
+                worksheet.set_column(column_number, column_number, -column_width)
+            else:
+                worksheet.set_column_pixels(column_number, column_number, column_width)
+        else:
+            raise TypeError(f"unsupported column_width type: {column_width!r}")
 
     def close(self) -> None:
         if not self.closed:
@@ -136,15 +220,26 @@ class SaveAsXlsx:
         if isinstance(input_value, Enum):  # must be first, because enum may match str or int
             return input_value.name
         if isinstance(input_value, (str, int, float, bool, Decimal, Fraction, datetime, date, time, timedelta)):
-            if for_json and not isinstance(input_value, (str, int, float, bool)):
+            if for_json and isinstance(input_value, (Decimal, Fraction)):
                 return float(input_value)
             return input_value
         if input_value is None:
             return None
-        if isinstance(input_value, list):
-            return "[" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "]"
-        if isinstance(input_value, set):
-            return "{" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "}"
-        if isinstance(input_value, dict):
+        if isinstance(input_value, UUID):
+            return str(input_value)
+        if isinstance(input_value, Mapping):
             return json.dumps(input_value, default=lambda value: cls.convert_value(value, for_json=True))
+        if isinstance(input_value, Set):
+            return "{" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "}"
+        if isinstance(input_value, Iterable):
+            return "[" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "]"
         raise UnsupportedTypeError(input_value)
+
+
+def save_as_xlsx(filename: str | PathLike,
+                 data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | None = None,
+                 **kwargs) -> None:
+    if "auto_save" in kwargs and kwargs["auto_save"] is not None and not kwargs["auto_save"]:
+        raise ValueError("calling save_as_xlsx(auto_save=False) makes no sense")
+    kwargs["auto_save"] = True
+    SaveAsXlsx(filename, data, **kwargs)

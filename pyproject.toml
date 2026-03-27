@@ -26,6 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "xlsxwriter",
+  "annotated_types",
 ]
 
 [project.urls]

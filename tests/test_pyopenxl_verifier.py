@@ -4,7 +4,7 @@ from typing import Any
 try:
     import openpyxl
 except ImportError:
-    openpyxl = None
+    openpyxl = None  # type: ignore
 
 
 def verify_using_pyopenxl(fn: Path | str, dimensions: str, data: list[tuple[Any, ...]] | None = None, sheet_name: str = "Sheet1", table_name: str = "Table1"):
