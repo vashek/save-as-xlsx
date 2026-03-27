@@ -2,27 +2,29 @@
 #
 # SPDX-License-Identifier: MIT
 from __future__ import annotations
+
 import json
-from dataclasses import is_dataclass, fields, asdict
-from datetime import datetime, date, time, timedelta
+from collections.abc import Iterable
+from dataclasses import asdict, fields, is_dataclass
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
 from os import PathLike, fspath
-from typing import Any, ClassVar, Iterable, Protocol
+from typing import Any, ClassVar, Protocol
 
 import xlsxwriter
 from xlsxwriter.exceptions import XlsxWriterException
 
 try:
-    from pydantic import BaseModel
     import pydantic
+    from pydantic import BaseModel
     PYDANTIC_VER = int(pydantic.__version__.split(".")[0])
 except ImportError:
     class BaseModel: pass
     PYDANTIC_VER = -1
 
-from .__about__ import __version__
+from .__about__ import __version__ as __version__
 
 
 class TableAddError(XlsxWriterException):
@@ -44,6 +46,7 @@ class SaveAsXlsx:
                  sheet_name: str | None = None,
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
+                 *,
                  extra_columns: bool = True,
                  total_row: bool = False,
                  auto_save: bool = False,
@@ -65,7 +68,7 @@ class SaveAsXlsx:
                     type(row).model_fields.keys() if PYDANTIC_VER >= 2 and isinstance(row, BaseModel) else
                     row.__fields__.keys() if isinstance(row, BaseModel) else
                     row.keys()
-                ) if col_name not in columns.keys()]
+                ) if col_name not in columns]
                 for column in missing_cols:
                     columns[column] = {"header": column}
         col_names = columns.keys()
@@ -102,20 +105,19 @@ class SaveAsXlsx:
             self.close()
 
     @classmethod
-    def convert_value(cls, input_value, for_json = False):
+    def convert_value(cls, input_value, *, for_json: bool = False):
         if isinstance(input_value, Enum):
             return input_value.name
-        elif isinstance(input_value, (str, int, float, bool, Decimal, Fraction, datetime, date, time, timedelta)):
+        if isinstance(input_value, (str, int, float, bool, Decimal, Fraction, datetime, date, time, timedelta)):
             if for_json and not isinstance(input_value, (str, int, float, bool)):
                 return float(input_value)
             return input_value
-        elif input_value is None:
+        if input_value is None:
             return None
-        elif isinstance(input_value, list):
+        if isinstance(input_value, list):
             return "[" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "]"
-        elif isinstance(input_value, set):
+        if isinstance(input_value, set):
             return "{" + ", ".join(str(cls.convert_value(value)) for value in input_value) + "}"
-        elif isinstance(input_value, dict):
+        if isinstance(input_value, dict):
             return json.dumps(input_value, default=lambda value: cls.convert_value(value, for_json=True))
-        else:
-            raise UnsupportedTypeError(input_value)
+        raise UnsupportedTypeError(input_value)

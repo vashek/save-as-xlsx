@@ -5,11 +5,12 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from decimal import Decimal
-from fractions import Fraction
 from enum import IntEnum
+from fractions import Fraction
 from pathlib import Path
 
 import save_as_xlsx
+
 from .test_pyopenxl_verifier import verify_using_pyopenxl
 
 
@@ -197,7 +198,7 @@ def test_complex():
             (None, '[1, 2, 3]', None, None, None, None, None),
             (None, None, '{1, 2, 3}', None, None, None, None),
             (None, None, None, -1.5, 2.99, 0.6, True),
-            # TODO XXX BUG enum should be "ONE"
+            # TODO: XXX BUG enum should be "ONE"
             ('{"nested": {"enum": 1, "dec": 2.99}}', None, None, None, None, None, None),
         ])
 

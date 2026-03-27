@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: MIT
 import tempfile
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
 import save_as_xlsx
+
 from .test_pyopenxl_verifier import verify_using_pyopenxl
 
 try:
@@ -29,7 +31,7 @@ class TestPydantic:
         a: int
         b: str = None
 
-    TEST_DATA_WITH_PYDANTIC = [
+    TEST_DATA_WITH_PYDANTIC: ClassVar[list[ModelForTest]] = [
         ModelForTest(a=1),
         ModelForTest(a=2, b="B"),
     ]

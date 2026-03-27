@@ -86,3 +86,6 @@ matrix.openpyxl.dependencies = [
     { value = "openpyxl", if = ["latest"] },
     # nothing for "none"
 ]
+
+[tool.ruff.lint]
+ignore = ["EM102", "TRY003"]
