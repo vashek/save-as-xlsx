@@ -73,15 +73,15 @@ SaveAsXlsx("file.xlsx", ({"num": i} for i in range(5)), auto_save=True)
 
 # file name can be a Path
 from pathlib import Path
-SaveAsXlsx(Path("file.xlsx"), DATA, auto_save=True)
+save_as_xlsx(Path("file.xlsx"), DATA)
 # saved columns: a, b, c
 
 # you can specify the order of columns - these will be first, remaining ones after them
-SaveAsXlsx("file.xlsx", DATA, column_order=("b", "c"))
+save_as_xlsx("file.xlsx", DATA, column_order=("b", "c"))
 # saved columns: b, c, a
 
 # or maybe you just want some of the columns, and an empty one
-SaveAsXlsx("file.xlsx", DATA, column_order=("b", "empty"), extra_columns=False)
+save_as_xlsx("file.xlsx", DATA, column_order=("b", "empty"), extra_columns=False)
 # saved columns: b, empty
 
 # you can also specify the sheet and/or table name
@@ -92,6 +92,9 @@ with SaveAsXlsx("file.xlsx", DATA, sheet_name="FirstSheet", table_name="FirstTab
 with SaveAsXlsx("file.xlsx") as saver:
     saver.add_sheet(DATA, sheet_name="FirstSheet", table_name="FirstTable")
     saver.add_sheet(OTHER_DATA, sheet_name="AnotherSheet", table_name="AnotherTable")
+
+# you can also specify custom column headings
+save_as_xlsx(Path("file.xlsx"), DATA, column_headings={"a": "First Column"})
 
 # to retry saving, perhaps with a different name:
 from xlsxwriter.exceptions import FileCreateError

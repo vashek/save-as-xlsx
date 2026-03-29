@@ -74,6 +74,7 @@ class SaveAsXlsx:
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
                  column_width: ColumnWidthType | Mapping[str, ColumnWidthType] | Iterable[ColumnWidthType] = None,
+                 column_headings: Mapping[str, str] | None = None,
                  *,
                  extra_columns: bool = True,
                  total_row: bool = False,
@@ -102,7 +103,15 @@ class SaveAsXlsx:
         self.columns_values: tuple[dict[str, str | int | float], ...] = ()
         self.number_of_value_rows = 0
         if data is not None:
-            self.add_sheet(data, sheet_name=sheet_name, table_name=table_name, column_order=column_order, column_width=column_width, extra_columns=extra_columns, total_row=total_row)
+            self.add_sheet(data,
+                           sheet_name=sheet_name,
+                           table_name=table_name,
+                           column_order=column_order,
+                           column_width=column_width,
+                           column_headings=column_headings,
+                           extra_columns=extra_columns,
+                           total_row=total_row,
+                           )
         if auto_save:
             self.close()
 
@@ -112,6 +121,7 @@ class SaveAsXlsx:
                   table_name: str | None = None,
                   column_order: Iterable[str] | None = None,
                   column_width: ColumnWidthType | Mapping[str, ColumnWidthType] | Iterable[ColumnWidthType] = None,
+                  column_headings: Mapping[str, str] | None = None,
                   *,
                   extra_columns: bool = True,
                   total_row: bool = False,
@@ -121,8 +131,9 @@ class SaveAsXlsx:
         self.worksheet = worksheet = self.workbook.add_worksheet(sheet_name)
         columns: dict[str, dict[str, str | int | float]] = {}
         self.columns = columns
+        column_headings = {} if column_headings is None else column_headings
         for column in column_order or ():
-            columns[column] = {"header": column}
+            columns[column] = {"header": column_headings.get(column) or column}
         if isinstance(data, Mapping):
             any_value = next(iter(data.values()))
             if is_dataclass(any_value):
@@ -153,7 +164,7 @@ class SaveAsXlsx:
                     row.keys()  # type: ignore
                 ) if col_name not in columns]
                 for column in missing_cols:
-                    columns[column] = {"header": column}
+                    columns[column] = {"header": column_headings.get(column) or column}
         col_names = columns.keys()
         self.columns_values = tuple(columns.values())
         self.number_of_value_rows = len(data)

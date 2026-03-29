@@ -196,6 +196,25 @@ def test_column_order_extra_nonexistent_column():
             ("B", None, None, None),
         ])
 
+def test_column_headings():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA, column_order=("b", "nonexistent"), column_headings={"nonexistent": "NON", "a": "ALPHA"}) as saver:
+            assert len(saver.columns_values) == 4
+            assert saver.columns_values[0]["header"] == "b"
+            assert saver.columns_values[1]["header"] == "NON"
+            assert saver.columns_values[2]["header"] == "ALPHA"
+            assert saver.columns_values[3]["header"] == "c"
+            assert saver.column_ref("b") == "A:A"
+            assert saver.column_ref("nonexistent") == "B:B"
+            assert saver.column_ref("a") == "C:C"
+            assert saver.column_ref("c") == "D:D"
+        verify_using_pyopenxl(fn, "A1:D3", data=[
+            ("b", "NON", "ALPHA", "c"),
+            ("2", None, 1, None),
+            ("B", None, None, None),
+        ])
+
 def test_column_order_no_extras():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
@@ -355,13 +374,17 @@ def test_dict_with_dicts():
 def test_dict_with_lists():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
-        with save_as_xlsx.SaveAsXlsx(fn, TEST_DICT_WITH_LISTS) as saver:
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DICT_WITH_LISTS, column_headings={"key": "KEY", "col2": "COL2"}) as saver:
             assert saver.number_of_value_rows == len(TEST_DICT_WITH_LISTS)
             assert len(saver.columns) == 3
             col_keys = tuple(saver.columns.keys())
             assert col_keys == ("key", "col1", "col2")
+            assert saver.column_ref("col2") == "C:C"
+            assert saver.columns_values[0]["header"] == "KEY"
+            assert saver.columns_values[1]["header"] == "col1"
+            assert saver.columns_values[2]["header"] == "COL2"
         verify_using_pyopenxl(fn, dimensions="A1:C3", data=[
-            ("key", "col1", "col2"),
+            ("KEY", "col1", "COL2"),
             ("John", 69, "male"),
             ("Jane", 42, "FEMALE"),
         ])
