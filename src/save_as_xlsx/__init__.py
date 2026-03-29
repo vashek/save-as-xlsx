@@ -127,6 +127,11 @@ class SaveAsXlsx:
             any_value = next(iter(data.values()))
             if is_dataclass(any_value):
                 data = tuple(dict(key=key, **asdict(value)) for key, value in data.items())
+            elif isinstance(any_value, BaseModel):
+                if PYDANTIC_VER >= 2:
+                    data = tuple(dict(key=key, **value.model_dump()) for key, value in data.items())
+                else:
+                    data = tuple(dict(key=key, **value.dict()) for key, value in data.items())
             elif isinstance(any_value, Mapping):
                 data = tuple(dict(key=key, **value) for key, value in data.items())
             elif isinstance(any_value, Iterable) and not isinstance(any_value, (str, bytes, bytearray)):

@@ -25,7 +25,8 @@ Just pass any:
   * Pydantic model instances
 * or even just a mapping (dictionary) of:
   * simple values (this will produce columns "key" and "value")
-  * dicts / mappings or dataclasses (this will produce columns "key" and then columns based on the keys of the mappings/classes)
+  * dicts / mappings or dataclasses or Pydantic model instances
+    (this will produce columns "key" and then columns based on the keys of the mappings/classes)
   * iterables (this will produce columns "key" and then "col1", "col2" etc.)
 
 Nesting of complex data types is handled.
