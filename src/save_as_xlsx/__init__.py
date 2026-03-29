@@ -125,7 +125,9 @@ class SaveAsXlsx:
             columns[column] = {"header": column}
         if isinstance(data, Mapping):
             any_value = next(iter(data.values()))
-            if isinstance(any_value, Mapping):
+            if is_dataclass(any_value):
+                data = tuple(dict(key=key, **asdict(value)) for key, value in data.items())
+            elif isinstance(any_value, Mapping):
                 data = tuple(dict(key=key, **value) for key, value in data.items())
             elif isinstance(any_value, Iterable) and not isinstance(any_value, (str, bytes, bytearray)):
                 data = tuple(dict(key=key, **{f"col{i}": item for i, item in enumerate(value, 1)}) for key, value in data.items())

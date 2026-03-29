@@ -5,7 +5,7 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from decimal import Decimal
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from fractions import Fraction
 from pathlib import Path
 from uuid import UUID
@@ -15,15 +15,21 @@ import save_as_xlsx
 from .test_pyopenxl_verifier import verify_using_pyopenxl
 
 
-class EnumForTest(IntEnum):
+class IntEnumForTest(IntEnum):
     ONE = 1
     TWO = 2
 
 
+class StrEnumForTest(StrEnum):
+    MALE = "M"
+    FEMALE = "F"
+
+
 @dataclass
-class DataclassForTest:
-    a: int
-    b: str | None = None
+class PersonDataclassForTest:
+    age: int
+    name: str | None = None
+    sex: StrEnumForTest | str | None = None
 
 
 TEST_DATA = [
@@ -36,11 +42,11 @@ TEST_DATA_COMPLEX = [
     {"list": [1, 2, 3]},
     {"set": {1, 2, 3}},
     {"float": -1.5, "dec": Decimal("2.99"), "frac": Fraction(3, 5), "bool": True},
-    {"dict": {"nested": {"enum": EnumForTest.ONE, "dec": Decimal("2.99")}}},
+    {"dict": {"nested": {"enum": IntEnumForTest.ONE, "dec": Decimal("2.99")}}},
 ]
 
 TEST_DATA_WITH_ENUM = [
-    {"a": 1, "enum": EnumForTest.ONE},
+    {"a": 1, "enum": IntEnumForTest.ONE},
 ]
 
 TEST_DATA_WITH_UUID = [
@@ -48,23 +54,28 @@ TEST_DATA_WITH_UUID = [
 ]
 
 TEST_DATA_WITH_DATACLASS = [
-    DataclassForTest(a=1),
-    DataclassForTest(a=2, b="B"),
+    PersonDataclassForTest(age=1),
+    PersonDataclassForTest(age=2, name="B"),
 ]
 
 TEST_DICT_SIMPLE = {
-    "John": "M",
-    "Jane": "F",
+    "John": "male",
+    "Jane": StrEnumForTest.FEMALE,
 }
 
 TEST_DICT_WITH_DICTS = {
     "John": {"Age": 69, "Sex": "male"},
-    "Jane": {"Age": 42, "Sex": "female"},
+    "Jane": {"Age": 42, "Sex": StrEnumForTest.FEMALE},
 }
 
 TEST_DICT_WITH_LISTS = {
     "John": [69, "male"],
-    "Jane": (42, "female"),
+    "Jane": (42, StrEnumForTest.FEMALE),
+}
+
+TEST_DICT_WITH_DATACLASSES = {
+    "John": PersonDataclassForTest(age=69, sex="male"),
+    "Jane": PersonDataclassForTest(age=42, sex=StrEnumForTest.FEMALE),
 }
 
 
@@ -268,14 +279,15 @@ def test_dataclasses():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
         with save_as_xlsx.SaveAsXlsx(fn, TEST_DATA_WITH_DATACLASS) as saver:
-            assert len(saver.columns_values) == 2
-            assert saver.columns_values[0]["header"] == "a"
-            assert saver.columns_values[1]["header"] == "b"
+            assert len(saver.columns_values) == 3
+            assert saver.columns_values[0]["header"] == "age"
+            assert saver.columns_values[1]["header"] == "name"
+            assert saver.columns_values[2]["header"] == "sex"
             assert saver.number_of_value_rows == 2
-        verify_using_pyopenxl(fn, "A1:B3", data=[
-            ("a", "b"),
-            (1, None),
-            (2, "B"),
+        verify_using_pyopenxl(fn, "A1:C3", data=[
+            ("age", "name", "sex"),
+            (1, None, None),
+            (2, "B", None),
         ])
 
 def test_another_sheet():
@@ -319,8 +331,8 @@ def test_dict_simple():
             assert col_keys == ("key", "value")
         verify_using_pyopenxl(fn, dimensions="A1:B3", data=[
             ("key", "value"),
-            ("John", "M"),
-            ("Jane", "F"),
+            ("John", "male"),
+            ("Jane", "FEMALE"),
         ])
 
 def test_dict_with_dicts():
@@ -334,7 +346,7 @@ def test_dict_with_dicts():
         verify_using_pyopenxl(fn, dimensions="A1:C3", data=[
             ("key", "Age", "Sex"),
             ("John", 69, "male"),
-            ("Jane", 42, "female"),
+            ("Jane", 42, "FEMALE"),
         ])
 
 def test_dict_with_lists():
@@ -348,5 +360,19 @@ def test_dict_with_lists():
         verify_using_pyopenxl(fn, dimensions="A1:C3", data=[
             ("key", "col1", "col2"),
             ("John", 69, "male"),
-            ("Jane", 42, "female"),
+            ("Jane", 42, "FEMALE"),
+        ])
+
+def test_dict_with_dataclasses():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DICT_WITH_DATACLASSES) as saver:
+            assert saver.number_of_value_rows == len(TEST_DICT_WITH_DATACLASSES)
+            assert len(saver.columns) == 4
+            col_keys = tuple(saver.columns.keys())
+            assert col_keys == ("key", "age", "name", "sex")
+        verify_using_pyopenxl(fn, dimensions="A1:D3", data=[
+            ("key", "age", "name", "sex"),
+            ("John", 69, None, "male"),
+            ("Jane", 42, None, "FEMALE"),
         ])

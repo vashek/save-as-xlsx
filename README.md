@@ -20,12 +20,12 @@ file. The data will be saved formatted as a Table (with a header row, filtering,
 You can pass data in many different formats and SaveAsXlsx tries to automagically do the right thing.
 Just pass any:
 * iterable (list, tuple, generator...) of:
-  * dictionaries
+  * dictionaries / mappings
   * dataclasses
   * Pydantic model instances
 * or even just a mapping (dictionary) of:
   * simple values (this will produce columns "key" and "value")
-  * mappings (this will produce columns "key" and then columns based on the keys of the mappings)
+  * dicts / mappings or dataclasses (this will produce columns "key" and then columns based on the keys of the mappings/classes)
   * iterables (this will produce columns "key" and then "col1", "col2" etc.)
 
 Nesting of complex data types is handled.
