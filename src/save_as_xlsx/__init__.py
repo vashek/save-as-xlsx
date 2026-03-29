@@ -18,6 +18,7 @@ import xlsxwriter  # type: ignore
 import xlsxwriter.worksheet  # type: ignore
 from annotated_types import Gt, Lt, Unit
 from xlsxwriter.exceptions import XlsxWriterException  # type: ignore
+from xlsxwriter.utility import xl_col_to_name  # type: ignore
 
 try:
     import pydantic  # type: ignore
@@ -203,7 +204,17 @@ class SaveAsXlsx:
         else:
             raise TypeError(f"unsupported column_width type: {column_width!r}")
 
-    def close(self) -> None:
+    def column_ref(self, column_name: str, *, absolute: bool = False) -> str:
+        column_number = tuple(self.columns.keys()).index(column_name)
+        column_letter = xl_col_to_name(column_number, col_abs=absolute)
+        return f"{column_letter}:{column_letter}"
+
+    def close(self, filename: str | PathLike | None = None) -> None:
+        if filename is not None and self.closed:
+            raise WorkbookClosedError
+        if filename is not None:
+            self.filename = filename
+            self.workbook.filename = fspath(filename)
         if not self.closed:
             self.workbook.close()
         self.closed = True

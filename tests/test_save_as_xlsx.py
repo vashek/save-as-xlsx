@@ -80,6 +80,18 @@ def test_save_with_str_filename():
         assert Path(fn).exists()
         verify_using_pyopenxl(fn, "A1:C3")
 
+def test_save_with_new_filename():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        fn2 = Path(tmpdir) / "test2.xlsx"
+        saver = save_as_xlsx.SaveAsXlsx(fn, TEST_DATA)
+        assert not fn.exists()
+        assert not fn2.exists()
+        saver.close(fn2)
+        assert not fn.exists()
+        assert fn2.exists()
+        verify_using_pyopenxl(fn2, "A1:C3")
+
 def test_save_on_auto_close():
     with tempfile.TemporaryDirectory() as tmpdir:
         fn = Path(tmpdir) / "test.xlsx"
@@ -132,6 +144,8 @@ def test_column_order():
             assert saver.columns_values[0]["header"] == "b"
             assert saver.columns_values[1]["header"] == "a"
             assert saver.columns_values[2]["header"] == "c"
+            assert saver.column_ref("a") == "B:B"
+            assert saver.column_ref("b", absolute=True) == "$A:$A"
         verify_using_pyopenxl(fn, "A1:C3", data=[
             ("b", "a", "c"),
             ("2", 1, None),

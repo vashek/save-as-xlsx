@@ -57,6 +57,9 @@ save_as_xlsx("file.xlsx", DATA)
 with SaveAsXlsx("file.xlsx", DATA) as saver:
     # do something with saver.workbook or saver.worksheet (see xlsxwriter)
     saver.add_sheet(OTHER_DATA)
+    # and maybe you want to protect the sheet except one column:
+    saver.worksheet.protect()
+    saver.worksheet.unprotect_range(saver.column_ref("Age"))
 
 # the data can be any iterable - tuple, generator...
 SaveAsXlsx("file.xlsx", ({"num": i} for i in range(5)), auto_save=True)
@@ -82,6 +85,14 @@ with SaveAsXlsx("file.xlsx", DATA, sheet_name="FirstSheet", table_name="FirstTab
 with SaveAsXlsx("file.xlsx") as saver:
     saver.add_sheet(DATA, sheet_name="FirstSheet", table_name="FirstTable")
     saver.add_sheet(OTHER_DATA, sheet_name="AnotherSheet", table_name="AnotherTable")
+
+# to retry saving, perhaps with a different name:
+from xlsxwriter.exceptions import FileCreateError
+saver = SaveAsXlsx("file.xlsx", DATA)
+try:
+    saver.close()
+except FileCreateError:
+    saver.close("file-new.xlsx")
 ```
 
 ## License
