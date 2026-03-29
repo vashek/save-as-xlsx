@@ -17,10 +17,16 @@
 If you have some tabular data, this package gives you a trivial one-line way of saving it as an Excel (.xlsx)
 file. The data will be saved formatted as a Table (with a header row, filtering, sorting and nice formatting).
 
-Just pass any iterable (list, tuple, generator...) of:
-* dictionaries
-* dataclasses
-* Pydantic model instances
+You can pass data in many different formats and SaveAsXlsx tries to automagically do the right thing.
+Just pass any:
+* iterable (list, tuple, generator...) of:
+  * dictionaries
+  * dataclasses
+  * Pydantic model instances
+* or even just a mapping (dictionary) of:
+  * simple values (this will produce columns "key" and "value")
+  * mappings (this will produce columns "key" and then columns based on the keys of the mappings)
+  * iterables (this will produce columns "key" and then "col1", "col2" etc.)
 
 Nesting of complex data types is handled.
 

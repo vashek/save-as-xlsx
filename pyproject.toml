@@ -92,4 +92,4 @@ matrix.openpyxl.dependencies = [
 ]
 
 [tool.ruff.lint]
-ignore = ["EM101", "EM102", "TRY003"]
+ignore = ["EM101", "EM102", "TRY003", "PYI025", "TID252"]

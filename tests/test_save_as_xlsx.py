@@ -52,6 +52,21 @@ TEST_DATA_WITH_DATACLASS = [
     DataclassForTest(a=2, b="B"),
 ]
 
+TEST_DICT_SIMPLE = {
+    "John": "M",
+    "Jane": "F",
+}
+
+TEST_DICT_WITH_DICTS = {
+    "John": {"Age": 69, "Sex": "male"},
+    "Jane": {"Age": 42, "Sex": "female"},
+}
+
+TEST_DICT_WITH_LISTS = {
+    "John": [69, "male"],
+    "Jane": (42, "female"),
+}
+
 
 def test_save_with_function():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -292,4 +307,46 @@ def test_empty_then_two_sheets():
         verify_using_pyopenxl(fn, sheet_name="AnotherSheet", table_name="AnotherTable", dimensions="A1:B2", data=[
             ("a", "enum"),
             (1, "ONE"),
+        ])
+
+def test_dict_simple():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DICT_SIMPLE) as saver:
+            assert saver.number_of_value_rows == len(TEST_DICT_SIMPLE)
+            assert len(saver.columns) == 2
+            col_keys = tuple(saver.columns.keys())
+            assert col_keys == ("key", "value")
+        verify_using_pyopenxl(fn, dimensions="A1:B3", data=[
+            ("key", "value"),
+            ("John", "M"),
+            ("Jane", "F"),
+        ])
+
+def test_dict_with_dicts():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DICT_WITH_DICTS) as saver:
+            assert saver.number_of_value_rows == len(TEST_DICT_WITH_DICTS)
+            assert len(saver.columns) == 3
+            col_keys = tuple(saver.columns.keys())
+            assert col_keys == ("key", "Age", "Sex")
+        verify_using_pyopenxl(fn, dimensions="A1:C3", data=[
+            ("key", "Age", "Sex"),
+            ("John", 69, "male"),
+            ("Jane", 42, "female"),
+        ])
+
+def test_dict_with_lists():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_DICT_WITH_LISTS) as saver:
+            assert saver.number_of_value_rows == len(TEST_DICT_WITH_LISTS)
+            assert len(saver.columns) == 3
+            col_keys = tuple(saver.columns.keys())
+            assert col_keys == ("key", "col1", "col2")
+        verify_using_pyopenxl(fn, dimensions="A1:C3", data=[
+            ("key", "col1", "col2"),
+            ("John", 69, "male"),
+            ("Jane", 42, "female"),
         ])

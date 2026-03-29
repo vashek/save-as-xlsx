@@ -69,7 +69,7 @@ ColumnWidthType: TypeAlias = None | ColumnWidth | Annotated[int|float, Gt(0), Un
 class SaveAsXlsx:
     def __init__(self,
                  filename: str | PathLike,
-                 data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | None = None,
+                 data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | Mapping[str, Any] | None = None,
                  sheet_name: str | None = None,
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
@@ -77,11 +77,26 @@ class SaveAsXlsx:
                  *,
                  extra_columns: bool = True,
                  total_row: bool = False,
+                 strings_to_numbers: bool = False,
+                 strings_to_formulas: bool = False,
+                 strings_to_urls: bool = True,
+                 nan_inf_to_errors: bool = True,
+                 remove_timezone: bool = False,
+                 default_date_format: str | None = None,
                  auto_save: bool = False,
                  ) -> None:
         self.closed = False
         self.filename = filename
-        self.workbook = xlsxwriter.Workbook(fspath(filename))
+        workbook_options: dict[str, bool | str] = {  # TODO: document these
+            "strings_to_numbers": strings_to_numbers,
+            "strings_to_formulas": strings_to_formulas,
+            "strings_to_urls": strings_to_urls,
+            "nan_inf_to_errors": nan_inf_to_errors,
+            "remove_timezone": remove_timezone,
+        }
+        if default_date_format:
+            workbook_options["default_date_format"] = default_date_format
+        self.workbook = xlsxwriter.Workbook(fspath(filename), workbook_options)
         self.worksheet: xlsxwriter.worksheet.Worksheet | None = None
         self.columns: dict[str, dict[str, str | int | float]] = {}
         self.columns_values: tuple[dict[str, str | int | float], ...] = ()
@@ -92,7 +107,7 @@ class SaveAsXlsx:
             self.close()
 
     def add_sheet(self,
-                  data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel],
+                  data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | Mapping[str, Any],
                   sheet_name: str | None = None,
                   table_name: str | None = None,
                   column_order: Iterable[str] | None = None,
@@ -108,10 +123,19 @@ class SaveAsXlsx:
         self.columns = columns
         for column in column_order or ():
             columns[column] = {"header": column}
-        if not isinstance(data, Iterable):
-            raise TypeError("data must be an iterable")
-        if not isinstance(data, Sized):
-            data = tuple(data)
+        if isinstance(data, Mapping):
+            any_value = next(iter(data.values()))
+            if isinstance(any_value, Mapping):
+                data = tuple(dict(key=key, **value) for key, value in data.items())
+            elif isinstance(any_value, Iterable) and not isinstance(any_value, (str, bytes, bytearray)):
+                data = tuple(dict(key=key, **{f"col{i}": item for i, item in enumerate(value, 1)}) for key, value in data.items())
+            else:
+                data = tuple({"key": key, "value": value} for key, value in data.items())
+        else:
+            if not isinstance(data, Iterable):
+                raise TypeError("data must be an iterable")
+            if not isinstance(data, Sized):
+                data = tuple(data)
         if extra_columns:
             for row in data:
                 # missing_cols = row.keys() - columns.keys()  # not order-preserving, so instead:
