@@ -5,10 +5,12 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from decimal import Decimal
+
 try:
     from enum import IntEnum, StrEnum
 except ImportError:
-    from enum import IntEnum as IntEnum, Enum as StrEnum  # type: ignore
+    from enum import Enum as StrEnum  # type: ignore
+    from enum import IntEnum
 from fractions import Fraction
 from pathlib import Path
 from uuid import UUID
@@ -80,6 +82,11 @@ TEST_DICT_WITH_DATACLASSES = {
     "John": PersonDataclassForTest(age=69, sex="male"),
     "Jane": PersonDataclassForTest(age=42, sex=StrEnumForTest.FEMALE),
 }
+
+TEST_LIST_OF_LISTS = [
+    ["John", 69, "male"],
+    ("Jane", 42, StrEnumForTest.FEMALE),
+]
 
 
 def test_save_with_function():
@@ -401,4 +408,22 @@ def test_dict_with_dataclasses():
             ("key", "age", "name", "sex"),
             ("John", 69, None, "male"),
             ("Jane", 42, None, "FEMALE"),
+        ])
+
+def test_list_of_lists():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fn = Path(tmpdir) / "test.xlsx"
+        with save_as_xlsx.SaveAsXlsx(fn, TEST_LIST_OF_LISTS, column_headings={"col2": "Age"}) as saver:
+            assert saver.number_of_value_rows == len(TEST_LIST_OF_LISTS)
+            assert len(saver.columns) == 3
+            col_keys = tuple(saver.columns.keys())
+            assert col_keys == ("col1", "col2", "col3")
+            assert saver.column_ref("col2") == "B:B"
+            assert saver.columns_values[0]["header"] == "col1"
+            assert saver.columns_values[1]["header"] == "Age"
+            assert saver.columns_values[2]["header"] == "col3"
+        verify_using_pyopenxl(fn, dimensions="A1:C3", data=[
+            ("col1", "Age", "col3"),
+            ("John", 69, "male"),
+            ("Jane", 42, "FEMALE"),
         ])

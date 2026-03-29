@@ -23,6 +23,7 @@ Just pass any:
   * dictionaries / mappings
   * dataclasses
   * Pydantic model instances
+  * or just plain iterables (this will produce columns "col1", "col2" etc.)
 * or even just a mapping (dictionary) of:
   * simple values (this will produce columns "key" and "value")
   * dicts / mappings or dataclasses or Pydantic model instances

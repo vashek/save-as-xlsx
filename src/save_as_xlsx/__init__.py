@@ -4,14 +4,14 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Mapping, Set, Sized
+from collections.abc import Iterable, Mapping, Set
 from dataclasses import asdict, fields, is_dataclass
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum, IntEnum
 from fractions import Fraction
 from os import PathLike, fspath
-from typing import Annotated, Any, ClassVar, Protocol, TypeAlias
+from typing import Annotated, Any, ClassVar, Protocol, TypeAlias, cast
 from uuid import UUID
 
 import xlsxwriter  # type: ignore
@@ -69,7 +69,7 @@ ColumnWidthType: TypeAlias = None | ColumnWidth | Annotated[int|float, Gt(0), Un
 class SaveAsXlsx:
     def __init__(self,
                  filename: str | PathLike,
-                 data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | Mapping[str, Any] | None = None,
+                 data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel | Iterable[Any]] | Mapping[str, Any] | None = None,
                  sheet_name: str | None = None,
                  table_name: str | None = None,
                  column_order: Iterable[str] | None = None,
@@ -116,7 +116,7 @@ class SaveAsXlsx:
             self.close()
 
     def add_sheet(self,
-                  data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel] | Mapping[str, Any],
+                  data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel | Iterable[Any]] | Mapping[str, Any],
                   sheet_name: str | None = None,
                   table_name: str | None = None,
                   column_order: Iterable[str] | None = None,
@@ -134,28 +134,9 @@ class SaveAsXlsx:
         column_headings = {} if column_headings is None else column_headings
         for column in column_order or ():
             columns[column] = {"header": column_headings.get(column) or column}
-        if isinstance(data, Mapping):
-            any_value = next(iter(data.values()))
-            if is_dataclass(any_value):
-                data = tuple(dict(key=key, **asdict(value)) for key, value in data.items())
-            elif isinstance(any_value, BaseModel):
-                if PYDANTIC_VER >= 2:
-                    data = tuple(dict(key=key, **value.model_dump()) for key, value in data.items())
-                else:
-                    data = tuple(dict(key=key, **value.dict()) for key, value in data.items())
-            elif isinstance(any_value, Mapping):
-                data = tuple(dict(key=key, **value) for key, value in data.items())
-            elif isinstance(any_value, Iterable) and not isinstance(any_value, (str, bytes, bytearray)):
-                data = tuple(dict(key=key, **{f"col{i}": item for i, item in enumerate(value, 1)}) for key, value in data.items())
-            else:
-                data = tuple({"key": key, "value": value} for key, value in data.items())
-        else:
-            if not isinstance(data, Iterable):
-                raise TypeError("data must be an iterable")
-            if not isinstance(data, Sized):
-                data = tuple(data)
+        prepared_data = self.prepare_data(data)
         if extra_columns:
-            for row in data:
+            for row in prepared_data:
                 # missing_cols = row.keys() - columns.keys()  # not order-preserving, so instead:
                 missing_cols = [col_name for col_name in (
                     (f.name for f in fields(row)) if is_dataclass(row) else
@@ -167,25 +148,48 @@ class SaveAsXlsx:
                     columns[column] = {"header": column_headings.get(column) or column}
         col_names = columns.keys()
         self.columns_values = tuple(columns.values())
-        self.number_of_value_rows = len(data)
-        result = worksheet.add_table(0, 0, len(data), len(columns) - 1, {
+        self.number_of_value_rows = len(prepared_data)
+        result = worksheet.add_table(0, 0, len(prepared_data), len(columns) - 1, {
             "header_row": True,
             "columns": self.columns_values,
             "total_row": total_row,
             **({"name": table_name} if table_name else {}),
-            "data": [
-                [self.convert_value(row_dict.get(col_name)) for col_name in col_names]  # type: ignore
-                for row_union in data
-                if (row_dict := (asdict(row_union) if is_dataclass(row_union) else  # type: ignore
-                                 row_union.model_dump() if PYDANTIC_VER >= 2 and isinstance(row_union, BaseModel) else
-                                 row_union.dict() if isinstance(row_union, BaseModel) else
-                                 row_union))
-            ],
+            "data": tuple(
+                tuple(self.convert_value(row_dict.get(col_name)) for col_name in col_names)
+                for row_dict in prepared_data
+            ),
         })
         if result != 0:
             raise TableAddError(f"Table add error: {result}")
         self.set_column_widths(worksheet, columns, column_width)
         return worksheet
+
+    @staticmethod
+    def prepare_data(data: Iterable[Mapping[str, Any] | DataclassInstance | BaseModel | Iterable[Any]] | Mapping[str, Any],
+                     ) -> tuple[dict[str, Any], ...]:
+        if isinstance(data, Mapping):
+            any_value = next(iter(data.values()))
+            if is_dataclass(any_value):
+                return tuple(dict(key=key, **asdict(value)) for key, value in data.items())
+            if isinstance(any_value, BaseModel):
+                if PYDANTIC_VER >= 2:
+                    return tuple(dict(key=key, **value.model_dump()) for key, value in data.items())
+                return tuple(dict(key=key, **value.dict()) for key, value in data.items())
+            if isinstance(any_value, Mapping):
+                return tuple(dict(key=key, **value) for key, value in data.items())
+            if isinstance(any_value, Iterable) and not isinstance(any_value, (str, bytes, bytearray)):
+                return tuple(dict(key=key, **{f"col{i}": item for i, item in enumerate(value, 1)}) for key, value in data.items())
+            return tuple({"key": key, "value": value} for key, value in data.items())
+        if not isinstance(data, Iterable):
+            raise TypeError("data must be an iterable")
+        return tuple(
+            asdict(cast("DataclassInstance", row)) if is_dataclass(row)
+            else row.model_dump() if PYDANTIC_VER >= 2 and isinstance(row, BaseModel)
+            else row.dict() if isinstance(row, BaseModel)
+            else row if isinstance(row, Mapping)
+            else {f"col{i}": value for i, value in enumerate(row, 1)}  # type: ignore
+            for row in data
+        )
 
     @classmethod
     def set_column_widths(cls,
