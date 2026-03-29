@@ -5,7 +5,10 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from decimal import Decimal
-from enum import IntEnum, StrEnum
+try:
+    from enum import IntEnum, StrEnum
+except ImportError:
+    from enum import IntEnum as IntEnum, Enum as StrEnum  # type: ignore
 from fractions import Fraction
 from pathlib import Path
 from uuid import UUID
